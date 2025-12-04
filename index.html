@@ -661,28 +661,24 @@
             </div>
 
             <div class="connection-area" id="connectionArea" style="display: none;">
-                <h2 id="connectionTitle">Verbindung</h2>
-                
                 <div id="hostSection" style="display: none;">
-                    <p style="margin-bottom: 1rem; opacity: 0.8;">Teile diesen Code mit den anderen Spielern:</p>
-                    <textarea id="localOffer" readonly placeholder="Warte auf Verbindungscode..."></textarea>
-                    <button class="btn btn-secondary" onclick="copyOffer()" style="width: 100%;">Code kopieren 📋</button>
-                    
-                    <p style="margin: 1.5rem 0 1rem; opacity: 0.8;">Füge hier den Antwort-Code der Mitspieler ein:</p>
-                    <textarea id="remoteAnswer" placeholder="Antwort-Code hier einfügen..."></textarea>
-                    <button class="btn btn-primary" onclick="acceptAnswer()" style="width: 100%;">Spieler hinzufügen</button>
+                    <h2 style="color: var(--gold); margin-bottom: 1rem;">Host - Dein Raum-Code:</h2>
+                    <div style="background: rgba(212, 168, 83, 0.1); padding: 1rem; border-radius: 8px; text-align: center; margin-bottom: 1.5rem;">
+                        <p style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 0.5rem;">Teile diesen Code:</p>
+                        <p id="sessionCode" style="font-size: 1.5rem; font-weight: bold; color: var(--gold); font-family: monospace; word-break: break-all;"></p>
+                        <button class="btn btn-secondary" onclick="copySessionCode()" style="width: 100%; margin-top: 0.5rem;">Code kopieren 📋</button>
+                    </div>
+                    <p style="opacity: 0.8; text-align: center;">Warte auf Spieler...</p>
+                    <div id="connectedPlayers" style="margin-top: 1.5rem;"></div>
                 </div>
 
                 <div id="joinSection" style="display: none;">
-                    <p style="margin-bottom: 1rem; opacity: 0.8;">Füge den Raum-Code vom Host ein:</p>
-                    <textarea id="remoteOffer" placeholder="Raum-Code hier einfügen..."></textarea>
-                    <button class="btn btn-primary" onclick="joinWithCode()" style="width: 100%;">Verbinden</button>
-                    
-                    <div id="answerSection" style="display: none; margin-top: 1.5rem;">
-                        <p style="margin-bottom: 1rem; opacity: 0.8;">Sende diesen Antwort-Code an den Host:</p>
-                        <textarea id="localAnswer" readonly></textarea>
-                        <button class="btn btn-secondary" onclick="copyAnswer()" style="width: 100%;">Antwort kopieren 📋</button>
+                    <h2 style="color: var(--gold); margin-bottom: 1.5rem;">Raum beitreten</h2>
+                    <div class="input-group">
+                        <label>Raum-Code eingeben:</label>
+                        <input type="text" id="roomCodeInput" placeholder="z.B. reizen-stich-123" maxlength="30">
                     </div>
+                    <button class="btn btn-primary" onclick="joinWithCode()" style="width: 100%;">Verbinden</button>
                 </div>
             </div>
 
@@ -856,7 +852,7 @@
         });
 
         async function createRoom() {
-            const playerName = document.getElementById('playerName').value.trim() || 'Spieler';
+            const playerName = document.getElementById('playerName').value.trim() || 'Host';
 
             try {
                 const info = await session.createSession(playerName);
@@ -864,15 +860,17 @@
                 game.myIndex = 0;
 
                 ui.showConnectionArea(true);
-                ui.updateConnectionUI(info.sessionId, true);
-                ui.showToast('Raum erstellt! Teile den Code mit anderen Spielern.');
+                document.getElementById('hostSection').style.display = 'block';
+                document.getElementById('joinSection').style.display = 'none';
+                document.getElementById('sessionCode').textContent = info.sessionId;
+                ui.showToast('Raum erstellt!');
             } catch (err) {
                 ui.showToast('Fehler beim Erstellen des Raums: ' + err.message);
             }
         }
 
-        async function joinRoom() {
-            const sessionCode = ui.getJoinCode();
+        async function joinWithCode() {
+            const sessionCode = document.getElementById('roomCodeInput').value.trim();
             if (!sessionCode) {
                 ui.showToast('Bitte gib einen Raum-Code ein!');
                 return;
@@ -882,9 +880,8 @@
 
             try {
                 const info = await session.joinSession(sessionCode, playerName);
-                ui.showConnectionArea(false);
-                ui.updateConnectionUI(info.sessionId, false);
-                ui.showToast('Dem Raum beigetreten! Warte auf den Host.');
+                ui.showToast('Dem Raum beigetreten!');
+                // Connection will trigger participant update
             } catch (err) {
                 ui.showToast('Fehler beim Beitreten: ' + err.message);
             }
@@ -907,6 +904,22 @@
             }
 
             ui.updatePlayerList(participants);
+
+            // Update connected players in host section
+            if (session.isHost) {
+                const connectedDiv = document.getElementById('connectedPlayers');
+                connectedDiv.innerHTML = participants.map(p => `
+                    <div class="player-item">
+                        <div class="player-status ${p.connected ? '' : 'waiting'}"></div>
+                        <span>${p.name}</span>
+                    </div>
+                `).join('');
+
+                // Show start button if we have 3 players
+                if (participants.filter(p => p.id !== session.myPeerId).length >= 2) {
+                    document.getElementById('startGameBtn').style.display = 'block';
+                }
+            }
         }
 
         function handleP2PMessage(msg, fromPeerId) {
@@ -1164,24 +1177,14 @@
         // Global handlers
         function showJoinOptions() {
             ui.showConnectionArea(false);
+            document.getElementById('hostSection').style.display = 'none';
+            document.getElementById('joinSection').style.display = 'block';
         }
 
-        function joinWithCode() {
-            const sessionCode = document.getElementById('remoteOffer').value.trim();
-            if (!sessionCode) {
-                ui.showToast('Bitte gib einen Raum-Code ein!');
-                return;
-            }
-
-            const playerName = document.getElementById('playerName').value.trim() || 'Spieler';
-
-            session.joinSession(sessionCode, playerName).then(info => {
-                ui.showConnectionArea(false);
-                ui.updateConnectionUI(info.sessionId, false);
-                ui.showToast('Dem Raum beigetreten! Warte auf den Host.');
-            }).catch(err => {
-                ui.showToast('Fehler beim Beitreten: ' + err.message);
-            });
+        function copySessionCode() {
+            const code = document.getElementById('sessionCode').textContent;
+            navigator.clipboard.writeText(code);
+            ui.showToast('Code kopiert!');
         }
 
         function toggleHelp() {
@@ -1199,20 +1202,6 @@
                 type: 'nextRound',
                 gameState: game.getState()
             });
-        }
-
-        function copyOffer() {
-            navigator.clipboard.writeText(document.getElementById('localOffer').value);
-            ui.showToast('Code kopiert!');
-        }
-
-        function copyAnswer() {
-            navigator.clipboard.writeText(document.getElementById('localAnswer').value);
-            ui.showToast('Antwort kopiert!');
-        }
-
-        function acceptAnswer() {
-            ui.showToast('Code akzeptiert!');
         }
 
         // Practice Mode Bot AI

@@ -278,31 +278,18 @@ class P2PSessionManager {
     }
 
     generateSessionCode() {
-        const adjectives = [
-            'swift', 'strong', 'brave', 'mighty', 'rapid', 'blazing', 'fierce', 'bold',
-            'turbo', 'power', 'epic', 'mega', 'super', 'ultra', 'stellar', 'cosmic'
+        // Simple SKAT-themed session code
+        const skatWords = [
+            'reizen', 'stich', 'alleinspieler', 'declarer', 'trumpf', 'grand', 'null',
+            'kreuz', 'pik', 'herz', 'karo', 'bube', 'schneider', 'schwarz', 'skat',
+            'vorhand', 'mittelhand', 'hinterhand', 'schieber', 'kontra', 'birne', 'spiel'
         ];
 
-        const nouns = [
-            'mountain', 'valley', 'river', 'peak', 'summit', 'ridge', 'canyon', 'plateau',
-            'rider', 'cycler', 'racer', 'climber', 'sprinter', 'champion', 'legend', 'hero'
-        ];
+        const word1 = skatWords[Math.floor(Math.random() * skatWords.length)];
+        const word2 = skatWords[Math.floor(Math.random() * skatWords.length)];
+        const number = Math.floor(Math.random() * 999);
 
-        const verbs = [
-            'riding', 'climbing', 'sprinting', 'racing', 'crushing', 'dominating', 'flying', 'soaring'
-        ];
-
-        const animals = [
-            'falcon', 'eagle', 'hawk', 'cheetah', 'leopard', 'jaguar', 'panther', 'tiger',
-            'lion', 'wolf', 'bear', 'shark', 'dragon', 'phoenix', 'griffin', 'mustang'
-        ];
-
-        const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-        const noun = nouns[Math.floor(Math.random() * nouns.length)];
-        const verb = verbs[Math.floor(Math.random() * verbs.length)];
-        const animal = animals[Math.floor(Math.random() * animals.length)];
-
-        return `${adj}-${noun}-${verb}-${animal}`;
+        return `${word1}-${word2}-${number}`;
     }
 
     removePeer(peerId) {
