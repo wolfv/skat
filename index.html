@@ -656,6 +656,10 @@
                 <button class="btn btn-secondary" id="joinRoomBtn">Raum beitreten</button>
             </div>
 
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(212, 168, 83, 0.2);">
+                <button class="btn btn-secondary" id="practiceBtn" style="width: 100%;">🤖 Trainingsmodus (mit Bots)</button>
+            </div>
+
             <div class="connection-area" id="connectionArea" style="display: none;">
                 <h2 id="connectionTitle">Verbindung</h2>
                 
@@ -843,6 +847,7 @@
             document.getElementById('createRoomBtn').addEventListener('click', createRoom);
             document.getElementById('joinRoomBtn').addEventListener('click', showJoinOptions);
             document.getElementById('startGameBtn').addEventListener('click', startGame);
+            document.getElementById('practiceBtn').addEventListener('click', startPracticeMode);
 
             // Set random player name
             document.getElementById('playerName').value = 'Spieler ' + Math.floor(Math.random() * 100);
@@ -972,6 +977,28 @@
                 type: 'startGame',
                 gameState: game.getState()
             });
+        }
+
+        function startPracticeMode() {
+            const playerName = document.getElementById('playerName').value.trim() || 'Du';
+
+            // Setup local game without P2P
+            game.players = [
+                { name: playerName, isBot: false, id: 'local-player' },
+                { name: 'Bot Klaus', isBot: true, id: 'bot-1' },
+                { name: 'Bot Petra', isBot: true, id: 'bot-2' }
+            ];
+            game.myIndex = 0;
+
+            game.initializeRound(0);
+            ui.showGame();
+            ui.renderGame();
+            ui.updateHelp('bidding');
+
+            ui.showToast('Trainingsmodus gestartet! (Bots spielen automatisch)');
+
+            // Start bot automation
+            playNextBotAction();
         }
 
         function playCard(card) {
@@ -1187,6 +1214,181 @@
         function acceptAnswer() {
             ui.showToast('Code akzeptiert!');
         }
+
+        // Practice Mode Bot AI
+        let botActionTimer = null;
+
+        function playNextBotAction() {
+            if (botActionTimer) clearTimeout(botActionTimer);
+
+            // Check if game is still active
+            if (game.phase === 'finished') {
+                botActionTimer = setTimeout(() => {
+                    game.dealer = (game.dealer + 1) % 3;
+                    game.initializeRound(game.dealer);
+                    ui.renderGame();
+                    ui.updateHelp('bidding');
+                    playNextBotAction();
+                }, 2000);
+                return;
+            }
+
+            // Human player's turn - wait for input
+            if (game.currentPlayer === game.myIndex) {
+                return;
+            }
+
+            const currentPlayer = game.players[game.currentPlayer];
+            if (!currentPlayer.isBot) {
+                return;
+            }
+
+            // Bot's turn
+            botActionTimer = setTimeout(() => {
+                if (game.phase === 'bidding') {
+                    botPlayBid();
+                } else if (game.phase === 'skat') {
+                    botHandleSkat();
+                } else if (game.phase === 'playing') {
+                    botPlayCard();
+                }
+
+                // Continue bot chain
+                playNextBotAction();
+            }, 1000 + Math.random() * 1000);
+        }
+
+        function botPlayBid() {
+            const hand = game.hands[game.currentPlayer];
+            const bs = game.biddingState;
+
+            // Simple bot strategy: count high cards
+            let strength = 0;
+            for (const card of hand) {
+                if (card.rank === 'J') strength += 3;
+                if (card.rank === 'A') strength += 2;
+                if (card.rank === '10') strength += 1;
+            }
+
+            const avgStrength = strength / 10;
+
+            // Bid if we're strong enough for current bid level
+            if (avgStrength > 0.3 + Math.random() * 0.3) {
+                game.placeBid(game.currentPlayer);
+                ui.showToast(`${game.players[game.currentPlayer].name}: ${game.biddingState.currentBid}!`);
+            } else {
+                game.passBid(game.currentPlayer);
+                ui.showToast(`${game.players[game.currentPlayer].name}: Passe!`);
+            }
+
+            ui.renderGame();
+        }
+
+        function botHandleSkat() {
+            const playerIdx = game.currentPlayer;
+            if (playerIdx !== game.declarer) return;
+
+            const hand = game.hands[playerIdx];
+
+            // First time: pick up skat
+            if (hand.length === 10) {
+                game.pickUpSkat(playerIdx);
+                ui.showToast(`${game.players[playerIdx].name} nimmt den Skat auf.`);
+                ui.renderGame();
+                return;
+            }
+
+            // Second time: push worst cards (low cards in non-trump suits)
+            if (hand.length === 12) {
+                const skatCards = [];
+                for (let i = 0; i < 2 && hand.length > 10; i++) {
+                    // Find weakest card (lowest value, non-trump)
+                    let worstIdx = 0;
+                    let worstValue = 999;
+
+                    for (let j = 0; j < hand.length; j++) {
+                        const card = hand[j];
+                        let value = CARD_VALUES[card.rank] || 0;
+                        if (card.rank === 'J') value = 10; // Jacks have decent value
+                        if (value < worstValue) {
+                            worstValue = value;
+                            worstIdx = j;
+                        }
+                    }
+
+                    const card = hand[worstIdx];
+                    game.pushCard(playerIdx, card);
+                    ui.renderGame();
+                }
+
+                // Select game type
+                const gameTypes = ['diamonds', 'hearts', 'spades', 'clubs', 'grand'];
+                const selectedType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+                game.selectGameType(playerIdx, selectedType);
+                ui.showToast(`${game.players[playerIdx].name} spielt ${ui.getGameTypeName(selectedType)}!`);
+                ui.renderGame();
+                return;
+            }
+        }
+
+        function botPlayCard() {
+            const playerIdx = game.currentPlayer;
+            const hand = game.hands[playerIdx];
+            const playable = game.getPlayableCards(hand);
+
+            if (playable.length === 0) {
+                console.warn('No playable cards!');
+                return;
+            }
+
+            // Simple strategy: play random playable card
+            // In real AI you'd evaluate trick winning chances
+            let cardToPlay = playable[Math.floor(Math.random() * playable.length)];
+
+            // Slightly smarter: if we can win trick cheaply, do it
+            if (game.trick.length > 0) {
+                const leadSuit = game.getEffectiveSuit(game.trick[0].card);
+                const strongCards = playable.filter(c => {
+                    const suit = game.getEffectiveSuit(c);
+                    return suit === 'trump' || (suit === leadSuit && CARD_VALUES[c.rank] >= 4);
+                });
+
+                if (strongCards.length > 0 && game.trick.length === 2) {
+                    cardToPlay = strongCards[0];
+                }
+            }
+
+            game.playCard(playerIdx, cardToPlay);
+            ui.showToast(`${game.players[playerIdx].name} spielt ${cardToPlay.rank}${SUIT_SYMBOLS[cardToPlay.suit]}`);
+            ui.renderGame();
+        }
+
+        // Override playCard to auto-continue bot actions
+        const originalPlayCard = playCard;
+        playCard = function(card) {
+            originalPlayCard(card);
+            if (game.currentPlayer !== game.myIndex) {
+                playNextBotAction();
+            }
+        };
+
+        // Override placeBid to auto-continue bot actions
+        const originalPlaceBid = placeBid;
+        placeBid = function() {
+            originalPlaceBid();
+            if (game.currentPlayer !== game.myIndex) {
+                playNextBotAction();
+            }
+        };
+
+        // Override passBid to auto-continue bot actions
+        const originalPassBid = passBid;
+        passBid = function() {
+            originalPassBid();
+            if (game.currentPlayer !== game.myIndex) {
+                playNextBotAction();
+            }
+        };
     </script>
 </body>
 </html>
