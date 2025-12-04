@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skat - Das deutsche Kartenspiel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #1a2634;
+            --bg-card: #2d3e50;
+            --felt-green: #2d5a3d;
+            --felt-dark: #1e3d2a;
+            --gold: #d4a853;
+            --gold-light: #e8c77b;
+            --cream: #f5f0e6;
+            --red: #c94444;
+            --text-light: #e8e4dc;
+            --shadow: rgba(0,0,0,0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Lobby Styles */
+        .lobby {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background: 
+                radial-gradient(ellipse at top, #2a3f54 0%, transparent 50%),
+                radial-gradient(ellipse at bottom, #1e3d2a 0%, transparent 50%),
+                var(--bg-dark);
+        }
+
+        .lobby h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 4rem;
+            color: var(--gold);
+            text-shadow: 2px 2px 4px var(--shadow);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        .lobby .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            opacity: 0.8;
+            margin-bottom: 3rem;
+        }
+
+        .lobby-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 10px 40px var(--shadow);
+            border: 1px solid rgba(212, 168, 83, 0.2);
+        }
+
+        .lobby-card h2 {
+            font-family: 'Playfair Display', serif;
+            color: var(--gold);
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--gold-light);
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid rgba(212, 168, 83, 0.3);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.2);
+            color: var(--text-light);
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .btn {
+            padding: 0.8rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+            color: var(--bg-dark);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(212, 168, 83, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--gold);
+            color: var(--gold);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gold);
+            color: var(--bg-dark);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .connection-area {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(212, 168, 83, 0.2);
+        }
+
+        .connection-area textarea {
+            width: 100%;
+            height: 100px;
+            padding: 1rem;
+            border: 2px solid rgba(212, 168, 83, 0.3);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.2);
+            color: var(--text-light);
+            font-family: monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+            margin-bottom: 1rem;
+        }
+
+        .connection-area textarea:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .player-list {
+            margin-top: 1.5rem;
+        }
+
+        .player-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+
+        .player-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4caf50;
+        }
+
+        .player-status.waiting {
+            background: #ff9800;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Game Table Styles */
+        .game-container {
+            display: none;
+            min-height: 100vh;
+            background: 
+                radial-gradient(ellipse at center, var(--felt-green) 0%, var(--felt-dark) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.05;
+            pointer-events: none;
+        }
+
+        .game-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        .game-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: var(--gold);
+        }
+
+        .game-info {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .score-display {
+            font-size: 0.9rem;
+            color: var(--cream);
+        }
+
+        .score-display strong {
+            color: var(--gold);
+        }
+
+        /* Table Layout */
+        .table-area {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .center-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .trick-card {
+            transition: all 0.3s ease;
+        }
+
+        /* Player Positions */
+        .player-area {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .player-area.bottom {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .player-area.top-left {
+            top: 100px;
+            left: 50px;
+        }
+
+        .player-area.top-right {
+            top: 100px;
+            right: 50px;
+        }
+
+        .player-name {
+            background: rgba(0,0,0,0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            border: 1px solid rgba(212, 168, 83, 0.3);
+        }
+
+        .player-name.active {
+            border-color: var(--gold);
+            box-shadow: 0 0 15px rgba(212, 168, 83, 0.5);
+        }
+
+        .player-name.dealer::after {
+            content: ' 🎴';
+        }
+
+        .player-name.declarer {
+            background: rgba(212, 168, 83, 0.3);
+        }
+
+        /* Cards */
+        .hand {
+            display: flex;
+            justify-content: center;
+        }
+
+        .card {
+            width: 70px;
+            height: 100px;
+            border-radius: 8px;
+            background: var(--cream);
+            box-shadow: 0 2px 8px var(--shadow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-left: -25px;
+            position: relative;
+            user-select: none;
+        }
+
+        .card:first-child {
+            margin-left: 0;
+        }
+
+        .card:hover:not(.card-back) {
+            transform: translateY(-15px);
+            z-index: 10;
+        }
+
+        .card.selected {
+            transform: translateY(-20px);
+            box-shadow: 0 5px 20px rgba(212, 168, 83, 0.6);
+        }
+
+        .card.playable {
+            border: 2px solid var(--gold);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%);
+            border: 3px solid var(--gold);
+            cursor: default;
+        }
+
+        .card-back::before {
+            content: '♠♥♦♣';
+            font-size: 0.8rem;
+            color: var(--gold);
+            letter-spacing: 2px;
+        }
+
+        .card .suit {
+            font-size: 1.5rem;
+        }
+
+        .card .rank {
+            font-weight: bold;
+            color: var(--bg-dark);
+        }
+
+        .card.red .suit,
+        .card.red .rank {
+            color: var(--red);
+        }
+
+        .opponent-hand .card {
+            width: 50px;
+            height: 70px;
+            margin-left: -20px;
+        }
+
+        /* Skat Cards */
+        .skat-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Bidding UI */
+        .bidding-panel {
+            position: fixed;
+            bottom: 180px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--gold);
+            text-align: center;
+            z-index: 50;
+            display: none;
+        }
+
+        .bidding-panel h3 {
+            color: var(--gold);
+            margin-bottom: 1rem;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .bid-value {
+            font-size: 2rem;
+            color: var(--cream);
+            margin-bottom: 1rem;
+        }
+
+        .bid-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .bid-buttons .btn {
+            padding: 0.6rem 1.5rem;
+        }
+
+        /* Game Selection */
+        .game-selection {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 2px solid var(--gold);
+            z-index: 100;
+            display: none;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .game-selection h3 {
+            color: var(--gold);
+            font-family: 'Playfair Display', serif;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .game-type-btn {
+            width: 100%;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: rgba(212, 168, 83, 0.1);
+            border: 1px solid rgba(212, 168, 83, 0.3);
+            border-radius: 8px;
+            color: var(--cream);
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+
+        .game-type-btn:hover {
+            background: rgba(212, 168, 83, 0.2);
+            border-color: var(--gold);
+        }
+
+        .game-type-btn .type-name {
+            font-weight: 600;
+            color: var(--gold);
+        }
+
+        .game-type-btn .type-desc {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-top: 0.25rem;
+        }
+
+        /* Help Panel */
+        .help-panel {
+            position: fixed;
+            right: 20px;
+            top: 80px;
+            width: 320px;
+            max-height: calc(100vh - 100px);
+            background: rgba(0,0,0,0.85);
+            border-radius: 12px;
+            border: 1px solid rgba(212, 168, 83, 0.3);
+            padding: 1.5rem;
+            overflow-y: auto;
+            z-index: 50;
+            display: none;
+        }
+
+        .help-panel h4 {
+            color: var(--gold);
+            font-family: 'Playfair Display', serif;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .help-panel p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            color: var(--cream);
+        }
+
+        .help-panel .tip {
+            background: rgba(212, 168, 83, 0.1);
+            padding: 0.75rem;
+            border-radius: 8px;
+            border-left: 3px solid var(--gold);
+            margin-bottom: 1rem;
+        }
+
+        .help-toggle {
+            position: fixed;
+            right: 20px;
+            top: 80px;
+            background: var(--gold);
+            color: var(--bg-dark);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            z-index: 51;
+        }
+
+        /* Message Toast */
+        .toast {
+            position: fixed;
+            bottom: 300px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: var(--cream);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            border: 1px solid var(--gold);
+            z-index: 200;
+            animation: fadeInOut 3s ease;
+            display: none;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, 20px); }
+            15% { opacity: 1; transform: translate(-50%, 0); }
+            85% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
+        }
+
+        /* Round Summary */
+        .round-summary {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            padding: 2rem 3rem;
+            border-radius: 16px;
+            border: 2px solid var(--gold);
+            text-align: center;
+            z-index: 150;
+            display: none;
+        }
+
+        .round-summary h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--gold);
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .round-summary .result {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .round-summary .points {
+            font-size: 2rem;
+            color: var(--gold);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .lobby h1 {
+                font-size: 2.5rem;
+            }
+
+            .card {
+                width: 55px;
+                height: 80px;
+                margin-left: -20px;
+            }
+
+            .help-panel {
+                width: calc(100% - 40px);
+                right: 20px;
+            }
+
+            .opponent-hand .card {
+                width: 40px;
+                height: 55px;
+                margin-left: -15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Lobby -->
+    <div class="lobby" id="lobby">
+        <h1>SKAT</h1>
+        <p class="subtitle">Das klassische deutsche Kartenspiel für 3 Spieler</p>
+
+        <div class="lobby-card">
+            <h2>🎴 Spielraum</h2>
+            
+            <div class="input-group">
+                <label>Dein Spielername</label>
+                <input type="text" id="playerName" placeholder="z.B. Hans" maxlength="20">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" id="createRoomBtn">Raum erstellen</button>
+                <button class="btn btn-secondary" id="joinRoomBtn">Raum beitreten</button>
+            </div>
+
+            <div class="connection-area" id="connectionArea" style="display: none;">
+                <h2 id="connectionTitle">Verbindung</h2>
+                
+                <div id="hostSection" style="display: none;">
+                    <p style="margin-bottom: 1rem; opacity: 0.8;">Teile diesen Code mit den anderen Spielern:</p>
+                    <textarea id="localOffer" readonly placeholder="Warte auf Verbindungscode..."></textarea>
+                    <button class="btn btn-secondary" onclick="copyOffer()" style="width: 100%;">Code kopieren 📋</button>
+                    
+                    <p style="margin: 1.5rem 0 1rem; opacity: 0.8;">Füge hier den Antwort-Code der Mitspieler ein:</p>
+                    <textarea id="remoteAnswer" placeholder="Antwort-Code hier einfügen..."></textarea>
+                    <button class="btn btn-primary" onclick="acceptAnswer()" style="width: 100%;">Spieler hinzufügen</button>
+                </div>
+
+                <div id="joinSection" style="display: none;">
+                    <p style="margin-bottom: 1rem; opacity: 0.8;">Füge den Raum-Code vom Host ein:</p>
+                    <textarea id="remoteOffer" placeholder="Raum-Code hier einfügen..."></textarea>
+                    <button class="btn btn-primary" onclick="joinWithCode()" style="width: 100%;">Verbinden</button>
+                    
+                    <div id="answerSection" style="display: none; margin-top: 1.5rem;">
+                        <p style="margin-bottom: 1rem; opacity: 0.8;">Sende diesen Antwort-Code an den Host:</p>
+                        <textarea id="localAnswer" readonly></textarea>
+                        <button class="btn btn-secondary" onclick="copyAnswer()" style="width: 100%;">Antwort kopieren 📋</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="player-list" id="playerList">
+                <h3 style="color: var(--gold); margin-bottom: 1rem;">Spieler im Raum</h3>
+                <div id="players"></div>
+            </div>
+
+            <button class="btn btn-primary" id="startGameBtn" onclick="startGame()" style="width: 100%; margin-top: 1.5rem; display: none;">
+                Spiel starten! 🎮
+            </button>
+        </div>
+    </div>
+
+    <!-- Game -->
+    <div class="game-container" id="gameContainer">
+        <div class="game-header">
+            <div class="game-title">SKAT</div>
+            <div class="game-info">
+                <div class="score-display" id="scoreDisplay">
+                    Punkte: <strong id="myScore">0</strong>
+                </div>
+                <div class="score-display" id="gameType">
+                    Spieltyp: <strong>-</strong>
+                </div>
+                <button class="btn btn-secondary" style="padding: 0.5rem 1rem;" onclick="toggleHelp()">?</button>
+            </div>
+        </div>
+
+        <div class="table-area">
+            <!-- Opponent Left -->
+            <div class="player-area top-left">
+                <div class="player-name" id="player1Name">Spieler 2</div>
+                <div class="hand opponent-hand" id="player1Hand"></div>
+            </div>
+
+            <!-- Opponent Right -->
+            <div class="player-area top-right">
+                <div class="player-name" id="player2Name">Spieler 3</div>
+                <div class="hand opponent-hand" id="player2Hand"></div>
+            </div>
+
+            <!-- Center (Trick) -->
+            <div class="center-area" id="trickArea"></div>
+
+            <!-- Skat -->
+            <div class="skat-area" id="skatArea"></div>
+
+            <!-- My Hand -->
+            <div class="player-area bottom">
+                <div class="player-name" id="myPlayerName">Ich</div>
+                <div class="hand" id="myHand"></div>
+            </div>
+        </div>
+
+        <!-- Bidding Panel -->
+        <div class="bidding-panel" id="biddingPanel">
+            <h3>Reizen</h3>
+            <p id="biddingInfo">Du bist dran!</p>
+            <div class="bid-value" id="currentBid">18</div>
+            <div class="bid-buttons">
+                <button class="btn btn-primary" onclick="placeBid()">Ja / Bieten</button>
+                <button class="btn btn-secondary" onclick="passBid()">Passe</button>
+            </div>
+        </div>
+
+        <!-- Game Selection -->
+        <div class="game-selection" id="gameSelection">
+            <h3>Wähle dein Spiel</h3>
+            <button class="game-type-btn" onclick="selectGame('clubs')">
+                <div class="type-name">♣ Kreuz (12)</div>
+                <div class="type-desc">Kreuz ist Trumpf, dazu alle Buben</div>
+            </button>
+            <button class="game-type-btn" onclick="selectGame('spades')">
+                <div class="type-name">♠ Pik (11)</div>
+                <div class="type-desc">Pik ist Trumpf, dazu alle Buben</div>
+            </button>
+            <button class="game-type-btn" onclick="selectGame('hearts')">
+                <div class="type-name">♥ Herz (10)</div>
+                <div class="type-desc">Herz ist Trumpf, dazu alle Buben</div>
+            </button>
+            <button class="game-type-btn" onclick="selectGame('diamonds')">
+                <div class="type-name">♦ Karo (9)</div>
+                <div class="type-desc">Karo ist Trumpf, dazu alle Buben</div>
+            </button>
+            <button class="game-type-btn" onclick="selectGame('grand')">
+                <div class="type-name">Grand (24)</div>
+                <div class="type-desc">Nur Buben sind Trumpf - höchstes Spiel!</div>
+            </button>
+            <button class="game-type-btn" onclick="selectGame('null')">
+                <div class="type-name">Null (23)</div>
+                <div class="type-desc">Keinen Stich machen! Keine Trümpfe.</div>
+            </button>
+        </div>
+
+        <!-- Help Panel -->
+        <div class="help-panel" id="helpPanel">
+            <h4>📖 Skat-Hilfe</h4>
+            <div id="helpContent">
+                <p><strong>Willkommen bei Skat!</strong></p>
+                <p>Skat ist das beliebteste Kartenspiel Deutschlands. Hier lernst du die Grundlagen:</p>
+                
+                <div class="tip">
+                    <strong>Die Karten:</strong> 32 Karten (7-10, Bube, Dame, König, Ass) in 4 Farben.
+                </div>
+
+                <p><strong>Kartenwerte:</strong></p>
+                <p>Ass = 11, Zehn = 10, König = 4, Dame = 3, Bube = 2, 9-7 = 0 Punkte</p>
+
+                <div class="tip">
+                    <strong>Spielablauf:</strong>
+                    <ol style="margin-left: 1rem; margin-top: 0.5rem;">
+                        <li>Geben (10 Karten pro Spieler, 2 in den Skat)</li>
+                        <li>Reizen (wer spielt?)</li>
+                        <li>Skat aufnehmen & Spiel ansagen</li>
+                        <li>10 Stiche spielen</li>
+                    </ol>
+                </div>
+
+                <p><strong>Trumpfreihenfolge:</strong></p>
+                <p>♣B > ♠B > ♥B > ♦B > Trumpf-Ass > Trumpf-10 > Trumpf-K > Trumpf-D > Trumpf-9 > Trumpf-8 > Trumpf-7</p>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div class="toast" id="toast"></div>
+
+        <!-- Round Summary -->
+        <div class="round-summary" id="roundSummary">
+            <h3 id="summaryTitle">Runde beendet!</h3>
+            <div class="result" id="summaryResult"></div>
+            <div class="points" id="summaryPoints"></div>
+            <button class="btn btn-primary" onclick="nextRound()">Nächste Runde</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.0/simplepeer.min.js"></script>
+    <script src="p2p-session.js"></script>
+    <script src="skat-game.js"></script>
+    <script src="skat-ui.js"></script>
+
+    <script>
+        // ============================================
+        // SKAT GAME - P2P Multiplayer with Session Manager
+        // ============================================
+
+        let session = null;
+        let game = null;
+        let ui = null;
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            game = new SkatGame();
+            session = new P2PSessionManager();
+            ui = new SkatUI(game, session);
+
+            // Setup session callbacks
+            session.onParticipantUpdate = handleParticipantUpdate;
+            session.onMessageReceived = handleP2PMessage;
+
+            // Setup button event listeners
+            document.getElementById('createRoomBtn').addEventListener('click', createRoom);
+            document.getElementById('joinRoomBtn').addEventListener('click', showJoinOptions);
+            document.getElementById('startGameBtn').addEventListener('click', startGame);
+
+            // Set random player name
+            document.getElementById('playerName').value = 'Spieler ' + Math.floor(Math.random() * 100);
+
+            ui.showLobby();
+        });
+
+        async function createRoom() {
+            const playerName = document.getElementById('playerName').value.trim() || 'Spieler';
+
+            try {
+                const info = await session.createSession(playerName);
+                game.players = [{ name: playerName, id: session.myPeerId }];
+                game.myIndex = 0;
+
+                ui.showConnectionArea(true);
+                ui.updateConnectionUI(info.sessionId, true);
+                ui.showToast('Raum erstellt! Teile den Code mit anderen Spielern.');
+            } catch (err) {
+                ui.showToast('Fehler beim Erstellen des Raums: ' + err.message);
+            }
+        }
+
+        async function joinRoom() {
+            const sessionCode = ui.getJoinCode();
+            if (!sessionCode) {
+                ui.showToast('Bitte gib einen Raum-Code ein!');
+                return;
+            }
+
+            const playerName = document.getElementById('playerName').value.trim() || 'Spieler';
+
+            try {
+                const info = await session.joinSession(sessionCode, playerName);
+                ui.showConnectionArea(false);
+                ui.updateConnectionUI(info.sessionId, false);
+                ui.showToast('Dem Raum beigetreten! Warte auf den Host.');
+            } catch (err) {
+                ui.showToast('Fehler beim Beitreten: ' + err.message);
+            }
+        }
+
+        function handleParticipantUpdate(participants) {
+            // Update player list from participants
+            game.players = participants.map((p, i) => ({
+                name: p.name,
+                id: p.id,
+                isBot: false
+            }));
+
+            // Set myIndex based on myPeerId
+            for (let i = 0; i < game.players.length; i++) {
+                if (game.players[i].id === session.myPeerId) {
+                    game.myIndex = i;
+                    break;
+                }
+            }
+
+            ui.updatePlayerList(participants);
+        }
+
+        function handleP2PMessage(msg, fromPeerId) {
+            console.log('Received P2P message:', msg.type, 'from:', fromPeerId);
+
+            switch (msg.type) {
+                case 'startGame':
+                    game.setState(msg.gameState);
+                    ui.showGame();
+                    ui.renderGame();
+                    ui.updateHelp('bidding');
+                    break;
+
+                case 'bid':
+                    if (session.isHost) {
+                        handleBidFromPlayer(msg, fromPeerId);
+                    }
+                    break;
+
+                case 'cardPlayed':
+                    if (session.isHost) {
+                        handleCardPlayedFromPlayer(msg);
+                    } else {
+                        game.trick.push(msg.cardInfo);
+                        ui.renderGame();
+                    }
+                    break;
+
+                case 'gameStateUpdate':
+                    game.setState(msg.gameState);
+                    ui.renderGame();
+                    if (game.phase === 'finished') {
+                        ui.showRoundSummary(msg.summary);
+                    }
+                    break;
+
+                case 'nextRound':
+                    game.setState(msg.gameState);
+                    ui.hideRoundSummary();
+                    ui.renderGame();
+                    ui.updateHelp('bidding');
+                    break;
+            }
+        }
+
+        function startGame() {
+            if (!session.isHost) {
+                ui.showToast('Nur der Host kann das Spiel starten!');
+                return;
+            }
+
+            // Fill up with bots if needed
+            while (game.players.length < 3) {
+                game.players.push({
+                    name: `Bot ${game.players.length}`,
+                    isBot: true,
+                    id: 'bot-' + game.players.length
+                });
+            }
+
+            game.initializeRound(0);
+            ui.showGame();
+            ui.renderGame();
+            ui.updateHelp('bidding');
+
+            // Broadcast game start
+            session.broadcast({
+                type: 'startGame',
+                gameState: game.getState()
+            });
+        }
+
+        function playCard(card) {
+            if (!game.playCard(game.myIndex, card)) {
+                ui.showToast('Diese Karte kannst du nicht spielen!');
+                return;
+            }
+
+            ui.renderGame();
+
+            if (session.isHost) {
+                session.broadcast({
+                    type: 'gameStateUpdate',
+                    gameState: game.getState()
+                });
+
+                if (game.phase === 'finished') {
+                    const summary = game.endRound();
+                    session.broadcast({
+                        type: 'gameStateUpdate',
+                        gameState: game.getState(),
+                        summary: summary
+                    });
+                }
+            } else {
+                session.broadcast({
+                    type: 'cardPlayed',
+                    card: card,
+                    playerIndex: game.myIndex
+                });
+            }
+        }
+
+        function placeBid() {
+            if (!game.placeBid(game.myIndex)) return;
+
+            ui.showToast(`${game.players[game.myIndex].name}: ${game.biddingState.currentBid}!`);
+
+            session.broadcast({
+                type: 'gameStateUpdate',
+                gameState: game.getState()
+            });
+
+            ui.renderGame();
+        }
+
+        function passBid() {
+            if (!game.passBid(game.myIndex)) {
+                ui.showToast('Alle haben gepasst! Nächste Runde');
+                setTimeout(() => {
+                    game.dealer = (game.dealer + 1) % 3;
+                    game.initializeRound(game.dealer);
+                    session.broadcast({
+                        type: 'nextRound',
+                        gameState: game.getState()
+                    });
+                }, 1500);
+                return;
+            }
+
+            ui.showToast(`${game.players[game.myIndex].name}: Passe!`);
+
+            session.broadcast({
+                type: 'gameStateUpdate',
+                gameState: game.getState()
+            });
+
+            ui.renderGame();
+        }
+
+        function pickUpSkat() {
+            if (!game.pickUpSkat(game.myIndex)) return;
+
+            ui.showToast('Wähle 2 Karten zum Drücken (in den Skat legen).');
+            ui.renderGame();
+        }
+
+        function pushCard(card) {
+            const isComplete = game.pushCard(game.myIndex, card);
+            ui.renderGame();
+
+            if (isComplete) {
+                ui.showGameSelection();
+                session.broadcast({
+                    type: 'gameStateUpdate',
+                    gameState: game.getState()
+                });
+            }
+        }
+
+        function selectGame(gameType) {
+            if (!game.selectGameType(game.myIndex, gameType)) return;
+
+            ui.showToast(`${game.players[game.declarer].name} spielt ${ui.getGameTypeName(gameType)}!`);
+            ui.updateHelp('playing');
+            ui.renderGame();
+
+            session.broadcast({
+                type: 'gameStateUpdate',
+                gameState: game.getState()
+            });
+        }
+
+        function handleBidFromPlayer(msg, fromPeerId) {
+            // Find player index by peerId
+            const playerIndex = game.players.findIndex(p => p.id === fromPeerId);
+            if (playerIndex === -1) return;
+
+            if (msg.action === 'bid') {
+                game.placeBid(playerIndex);
+            } else if (msg.action === 'pass') {
+                game.passBid(playerIndex);
+            }
+
+            session.broadcast({
+                type: 'gameStateUpdate',
+                gameState: game.getState()
+            });
+
+            ui.renderGame();
+        }
+
+        function handleCardPlayedFromPlayer(msg) {
+            const playerIndex = game.players.findIndex(p => p.id === msg.playerId);
+            if (playerIndex === -1) return;
+
+            const hand = game.hands[playerIndex];
+            const idx = hand.findIndex(c => c.suit === msg.card.suit && c.rank === msg.card.rank);
+            if (idx !== -1) hand.splice(idx, 1);
+
+            game.trick.push({ card: msg.card, player: playerIndex });
+
+            if (game.trick.length === 3) {
+                setTimeout(() => {
+                    game.resolveTrick();
+
+                    if (game.hands.every(h => h.length === 0)) {
+                        const summary = game.endRound();
+                        session.broadcast({
+                            type: 'gameStateUpdate',
+                            gameState: game.getState(),
+                            summary: summary
+                        });
+                        ui.showRoundSummary(summary);
+                    } else {
+                        session.broadcast({
+                            type: 'gameStateUpdate',
+                            gameState: game.getState()
+                        });
+                    }
+
+                    ui.renderGame();
+                }, 1500);
+            } else {
+                session.broadcast({
+                    type: 'gameStateUpdate',
+                    gameState: game.getState()
+                });
+                ui.renderGame();
+            }
+        }
+
+        // Global handlers
+        function showJoinOptions() {
+            ui.showConnectionArea(false);
+        }
+
+        function joinWithCode() {
+            const sessionCode = document.getElementById('remoteOffer').value.trim();
+            if (!sessionCode) {
+                ui.showToast('Bitte gib einen Raum-Code ein!');
+                return;
+            }
+
+            const playerName = document.getElementById('playerName').value.trim() || 'Spieler';
+
+            session.joinSession(sessionCode, playerName).then(info => {
+                ui.showConnectionArea(false);
+                ui.updateConnectionUI(info.sessionId, false);
+                ui.showToast('Dem Raum beigetreten! Warte auf den Host.');
+            }).catch(err => {
+                ui.showToast('Fehler beim Beitreten: ' + err.message);
+            });
+        }
+
+        function toggleHelp() {
+            ui.toggleHelp();
+        }
+
+        function nextRound() {
+            ui.hideRoundSummary();
+            game.dealer = (game.dealer + 1) % 3;
+            game.initializeRound(game.dealer);
+            ui.renderGame();
+            ui.updateHelp('bidding');
+
+            session.broadcast({
+                type: 'nextRound',
+                gameState: game.getState()
+            });
+        }
+
+        function copyOffer() {
+            navigator.clipboard.writeText(document.getElementById('localOffer').value);
+            ui.showToast('Code kopiert!');
+        }
+
+        function copyAnswer() {
+            navigator.clipboard.writeText(document.getElementById('localAnswer').value);
+            ui.showToast('Antwort kopiert!');
+        }
+
+        function acceptAnswer() {
+            ui.showToast('Code akzeptiert!');
+        }
+    </script>
+</body>
+</html>
