@@ -859,13 +859,20 @@
                 game.players = [{ name: playerName, id: session.myPeerId }];
                 game.myIndex = 0;
 
-                ui.showConnectionArea(true);
+                // Show connection area and host section
+                document.getElementById('connectionArea').style.display = 'block';
                 document.getElementById('hostSection').style.display = 'block';
                 document.getElementById('joinSection').style.display = 'none';
+                document.getElementById('playerList').style.display = 'none';
+
+                // Display the session code
                 document.getElementById('sessionCode').textContent = info.sessionId;
-                ui.showToast('Raum erstellt!');
+                console.log('Session created:', info.sessionId);
+
+                ui.showToast('Raum erstellt! Code: ' + info.sessionId);
             } catch (err) {
                 ui.showToast('Fehler beim Erstellen des Raums: ' + err.message);
+                console.error('Create room error:', err);
             }
         }
 
@@ -879,11 +886,18 @@
             const playerName = document.getElementById('playerName').value.trim() || 'Spieler';
 
             try {
+                ui.showToast('Verbinde zu Raum...');
                 const info = await session.joinSession(sessionCode, playerName);
-                ui.showToast('Dem Raum beigetreten!');
-                // Connection will trigger participant update
+
+                // Hide lobby, show connection area
+                document.getElementById('connectionArea').style.display = 'none';
+                document.getElementById('playerList').style.display = 'block';
+
+                ui.showToast('Dem Raum beigetreten! Warte auf Host...');
+                console.log('Joined session:', info.sessionId);
             } catch (err) {
                 ui.showToast('Fehler beim Beitreten: ' + err.message);
+                console.error('Join error:', err);
             }
         }
 
@@ -1176,9 +1190,10 @@
 
         // Global handlers
         function showJoinOptions() {
-            ui.showConnectionArea(false);
+            document.getElementById('connectionArea').style.display = 'block';
             document.getElementById('hostSection').style.display = 'none';
             document.getElementById('joinSection').style.display = 'block';
+            document.getElementById('playerList').style.display = 'none';
         }
 
         function copySessionCode() {

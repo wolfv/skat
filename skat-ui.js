@@ -325,27 +325,7 @@ class SkatUI {
         }, 3000);
     }
 
-    showConnectionArea(isHost) {
-        document.getElementById('connectionArea').style.display = 'block';
-        document.getElementById('connectionTitle').textContent = isHost ? 'Als Host: Verbinde Mitspieler' : 'Raum beitreten';
-        document.getElementById('hostSection').style.display = isHost ? 'block' : 'none';
-        document.getElementById('joinSection').style.display = isHost ? 'none' : 'block';
-    }
-
-    updateConnectionUI(sessionId, isHost) {
-        if (isHost) {
-            document.getElementById('localOffer').value = btoa(JSON.stringify({ sessionId }));
-        } else {
-            document.getElementById('localAnswer').value = btoa(JSON.stringify({ sessionId }));
-            document.getElementById('answerSection').style.display = 'block';
-        }
-    }
-
-    getJoinCode() {
-        return document.getElementById('remoteOffer').value.trim();
-    }
-
-    clearJoinCode() {
-        document.getElementById('remoteOffer').value = '';
+    showConnectionArea(show = true) {
+        document.getElementById('connectionArea').style.display = show ? 'block' : 'none';
     }
 }
